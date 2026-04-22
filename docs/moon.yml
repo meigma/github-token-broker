@@ -6,11 +6,11 @@ tags:
   - 'docusaurus'
 
 project:
-  title: 'PROJECT_NAME docs'
-  description: 'Docusaurus documentation site for PROJECT_NAME.'
-  owner: 'REPLACE_ME_OWNER'
+  title: 'github-token-broker docs'
+  description: 'Docusaurus documentation site for the github-token-broker service.'
+  owner: '@meigma'
   maintainers:
-    - 'REPLACE_ME_MAINTAINER'
+    - '@meigma'
 
 toolchains:
   default: 'node'

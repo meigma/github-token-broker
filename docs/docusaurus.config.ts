@@ -3,15 +3,15 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'PROJECT_NAME',
-  tagline: 'Starting point for PROJECT_NAME documentation',
+  title: 'github-token-broker',
+  tagline: 'Short-lived, scoped GitHub App installation tokens from AWS Lambda',
   future: {
     v4: true,
   },
-  url: 'https://docs.example.com',
-  baseUrl: '/',
-  organizationName: 'REPLACE_ME_ORG',
-  projectName: 'REPLACE_ME_REPO',
+  url: 'https://meigma.github.io',
+  baseUrl: '/github-token-broker/',
+  organizationName: 'meigma',
+  projectName: 'github-token-broker',
   onBrokenLinks: 'throw',
   markdown: {
     hooks: {
@@ -31,7 +31,7 @@ const config: Config = {
           routeBasePath: '/',
           sidebarPath: false,
           breadcrumbs: false,
-          editUrl: 'https://github.com/REPLACE_ME_ORG/REPLACE_ME_REPO/edit/main/docs/',
+          editUrl: 'https://github.com/meigma/github-token-broker/edit/master/docs/',
         },
         blog: false,
         theme: {
@@ -46,10 +46,10 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'PROJECT_NAME',
+      title: 'github-token-broker',
       items: [
         {
-          href: 'https://github.com/REPLACE_ME_ORG/REPLACE_ME_REPO',
+          href: 'https://github.com/meigma/github-token-broker',
           label: 'GitHub',
           position: 'right',
           className: 'navbar__item--github',
@@ -58,7 +58,7 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      copyright: `Copyright © ${new Date().getFullYear()} REPLACE_ME_ORG. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} meigma. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,
