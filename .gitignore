@@ -73,7 +73,7 @@ docs/.docusaurus/
 *.swp
 
 # AI session protocol
-.agent/
+.agents/
 .claude/
 .journal/
 .wt/
