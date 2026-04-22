@@ -4,10 +4,10 @@ default:
     @just --list
 
 fmt:
-    gofmt -w ./cmd
+    gofmt -w ./cmd ./internal
 
 test:
-    go test ./...
+    go test ./cmd/... ./internal/...
 
 build:
     rm -rf build dist
@@ -16,5 +16,5 @@ build:
     (cd build && zip -X ../dist/github-token-broker.zip bootstrap)
 
 check:
-    go test ./...
+    go test ./cmd/... ./internal/...
     just build

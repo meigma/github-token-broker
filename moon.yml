@@ -26,13 +26,13 @@ fileGroups:
 
 tasks:
   fmt:
-    command: 'gofmt -l ./cmd'
+    command: "bash -c 'test -z \"$(gofmt -l ./cmd ./internal)\"'"
     toolchains: ['go']
     inputs:
       - '@group(sources)'
 
   test:
-    command: 'go test ./...'
+    command: 'go test ./cmd/... ./internal/...'
     toolchains: ['go']
     inputs:
       - '@group(sources)'
