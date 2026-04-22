@@ -25,12 +25,14 @@ type githubStubConfig struct {
 	PublicKey      *rsa.PublicKey
 	ClientID       string
 	InstallationID string
+	Owner          string
 	Repository     string
 	Permissions    map[string]string
 	Token          string
 	ExpiresAt      string
 	Status         int
 	ErrorBody      string
+	ReportedID     string
 }
 
 type githubStub struct {
@@ -52,6 +54,9 @@ func newGitHubStub(t *testing.T, cfg githubStubConfig) *githubStub {
 	if cfg.ExpiresAt == "" {
 		cfg.ExpiresAt = "2026-04-22T00:00:00Z"
 	}
+	if cfg.ReportedID == "" {
+		cfg.ReportedID = cfg.InstallationID
+	}
 
 	stub := &githubStub{cfg: cfg}
 	stub.server = httptest.NewServer(http.HandlerFunc(stub.handle))
@@ -68,7 +73,26 @@ func (s *githubStub) handle(w http.ResponseWriter, r *http.Request) {
 	s.calls++
 	s.mu.Unlock()
 
-	if err := s.validate(r); err != nil {
+	if err := s.validateCommon(r); err != nil {
+		s.recordError(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method + " " + r.URL.Path {
+	case http.MethodGet + " " + s.repositoryInstallationPath():
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintf(w, `{"id":%s}`, s.cfg.ReportedID)
+		return
+	case http.MethodPost + " " + s.accessTokenPath():
+		if err := s.validateAccessTokenRequest(r); err != nil {
+			s.recordError(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	default:
+		err := fmt.Errorf("unexpected GitHub request %s %s", r.Method, r.URL.Path)
 		s.recordError(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -84,19 +108,9 @@ func (s *githubStub) handle(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, `{"token":%q,"expires_at":%q}`, s.cfg.Token, s.cfg.ExpiresAt)
 }
 
-func (s *githubStub) validate(r *http.Request) error {
-	expectedPath := "/app/installations/" + s.cfg.InstallationID + "/access_tokens"
-	if r.Method != http.MethodPost {
-		return fmt.Errorf("expected POST request, got %s", r.Method)
-	}
-	if r.URL.Path != expectedPath {
-		return fmt.Errorf("expected GitHub path %s, got %s", expectedPath, r.URL.Path)
-	}
+func (s *githubStub) validateCommon(r *http.Request) error {
 	if got := r.Header.Get("Accept"); got != "application/vnd.github+json" {
 		return fmt.Errorf("expected GitHub Accept header, got %q", got)
-	}
-	if got := r.Header.Get("Content-Type"); got != "application/json" {
-		return fmt.Errorf("expected JSON Content-Type header, got %q", got)
 	}
 	if got := r.Header.Get("User-Agent"); got != "github-token-broker" {
 		return fmt.Errorf("expected github-token-broker User-Agent, got %q", got)
@@ -113,6 +127,17 @@ func (s *githubStub) validate(r *http.Request) error {
 		return err
 	}
 
+	s.mu.Lock()
+	s.seenJWT = token
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *githubStub) validateAccessTokenRequest(r *http.Request) error {
+	if got := r.Header.Get("Content-Type"); got != "application/json" {
+		return fmt.Errorf("expected JSON Content-Type header, got %q", got)
+	}
+
 	var body struct {
 		Repositories []string          `json:"repositories"`
 		Permissions  map[string]string `json:"permissions"`
@@ -127,10 +152,15 @@ func (s *githubStub) validate(r *http.Request) error {
 		return fmt.Errorf("expected permissions %v, got %v", s.cfg.Permissions, body.Permissions)
 	}
 
-	s.mu.Lock()
-	s.seenJWT = token
-	s.mu.Unlock()
 	return nil
+}
+
+func (s *githubStub) repositoryInstallationPath() string {
+	return "/repos/" + s.cfg.Owner + "/" + s.cfg.Repository + "/installation"
+}
+
+func (s *githubStub) accessTokenPath() string {
+	return "/app/installations/" + s.cfg.InstallationID + "/access_tokens"
 }
 
 func verifyGitHubJWT(token string, publicKey *rsa.PublicKey, clientID string, now time.Time) error {

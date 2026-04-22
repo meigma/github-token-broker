@@ -40,6 +40,7 @@ func TestBrokerMintsTokenWithDefaultPermissions(t *testing.T) {
 		PublicKey:      &key.privateKey.PublicKey,
 		ClientID:       testClientID,
 		InstallationID: testInstallationID,
+		Owner:          testOwner,
 		Repository:     testRepository,
 		Permissions:    map[string]string{"contents": "read"},
 		Token:          "ghs_default_permissions",
@@ -57,7 +58,7 @@ func TestBrokerMintsTokenWithDefaultPermissions(t *testing.T) {
 	assert.Equal(t, map[string]string{"contents": "read"}, response.Permissions)
 	assert.Equal(t, time.Date(2026, 4, 22, 0, 0, 0, 0, time.UTC), response.ExpiresAt)
 	assertNoLogLeak(t, result, key.privatePEM, "ghs_default_permissions")
-	github.assertRequests(t, 1)
+	github.assertRequests(t, 2)
 }
 
 func TestBrokerMintsTokenWithCustomPermissions(t *testing.T) {
@@ -71,6 +72,7 @@ func TestBrokerMintsTokenWithCustomPermissions(t *testing.T) {
 		PublicKey:      &key.privateKey.PublicKey,
 		ClientID:       testClientID,
 		InstallationID: testInstallationID,
+		Owner:          testOwner,
 		Repository:     testRepository,
 		Permissions: map[string]string{
 			"contents":      "read",
@@ -97,7 +99,7 @@ func TestBrokerMintsTokenWithCustomPermissions(t *testing.T) {
 		"pull_requests": "write",
 	}, response.Permissions)
 	assertNoLogLeak(t, result, key.privatePEM, "ghs_custom_permissions")
-	github.assertRequests(t, 1)
+	github.assertRequests(t, 2)
 }
 
 func TestBrokerReportsMissingSSMParameter(t *testing.T) {
@@ -110,6 +112,7 @@ func TestBrokerReportsMissingSSMParameter(t *testing.T) {
 		PublicKey:      &key.privateKey.PublicKey,
 		ClientID:       testClientID,
 		InstallationID: testInstallationID,
+		Owner:          testOwner,
 		Repository:     testRepository,
 		Permissions:    map[string]string{"contents": "read"},
 		Token:          "ghs_never_minted",
@@ -128,6 +131,35 @@ func TestBrokerReportsMissingSSMParameter(t *testing.T) {
 	github.assertRequests(t, 0)
 }
 
+func TestBrokerRejectsRepositoryInstallationMismatch(t *testing.T) {
+	key := generateTestPrivateKey(t)
+	ssmEndpoint := startMotoSSM(t, map[string]string{
+		testClientIDParameter:     testClientID,
+		testInstallationParameter: testInstallationID,
+		testPrivateKeyParameter:   key.privatePEM,
+	})
+	github := newGitHubStub(t, githubStubConfig{
+		PublicKey:      &key.privateKey.PublicKey,
+		ClientID:       testClientID,
+		InstallationID: testInstallationID,
+		Owner:          testOwner,
+		Repository:     testRepository,
+		Permissions:    map[string]string{"contents": "read"},
+		Token:          "ghs_never_minted",
+		ReportedID:     "456",
+	})
+
+	result := runBrokerInvocation(t, runConfig{
+		SSMEndpoint:    ssmEndpoint,
+		GitHubEndpoint: github.URL(),
+	})
+
+	body := result.requireError(t)
+	assert.Contains(t, body, "does not match configured installation")
+	assertNoLogLeak(t, result, key.privatePEM, "ghs_never_minted")
+	github.assertRequests(t, 1)
+}
+
 func TestBrokerReportsGitHubTokenRejection(t *testing.T) {
 	key := generateTestPrivateKey(t)
 	ssmEndpoint := startMotoSSM(t, map[string]string{
@@ -139,6 +171,7 @@ func TestBrokerReportsGitHubTokenRejection(t *testing.T) {
 		PublicKey:      &key.privateKey.PublicKey,
 		ClientID:       testClientID,
 		InstallationID: testInstallationID,
+		Owner:          testOwner,
 		Repository:     testRepository,
 		Permissions:    map[string]string{"contents": "read"},
 		Status:         403,
@@ -154,7 +187,7 @@ func TestBrokerReportsGitHubTokenRejection(t *testing.T) {
 	assert.Contains(t, body, "status 403")
 	assert.Contains(t, body, "denied")
 	assertNoLogLeak(t, result, key.privatePEM, github.lastJWT())
-	github.assertRequests(t, 1)
+	github.assertRequests(t, 2)
 }
 
 func TestBrokerReportsMalformedPrivateKeyBeforeCallingGitHub(t *testing.T) {
@@ -169,6 +202,7 @@ func TestBrokerReportsMalformedPrivateKeyBeforeCallingGitHub(t *testing.T) {
 		PublicKey:      &key.privateKey.PublicKey,
 		ClientID:       testClientID,
 		InstallationID: testInstallationID,
+		Owner:          testOwner,
 		Repository:     testRepository,
 		Permissions:    map[string]string{"contents": "read"},
 		Token:          "ghs_never_minted",

@@ -1,37 +1,73 @@
 # github-token-broker
 
-`github-token-broker` is a small AWS Lambda function that vends short-lived, scoped GitHub App installation tokens.
+`github-token-broker` is an AWS Lambda function that vends short-lived, scoped GitHub App installation tokens.
 It is intended for bootstrap and automation workflows that need a GitHub token but should not carry long-lived credentials themselves, and is maintained by the [meigma](https://github.com/meigma) organization.
 
-> **Status:** this repository is being bootstrapped from an internal service. The Go implementation will land in a follow-up change; until then, only the repository scaffolding is in place.
+## How It Works
 
-## How it works
-
-The Lambda reads three values from AWS SSM Parameter Store — a GitHub App client ID, an installation ID, and the App's RSA private key — signs a short-lived JWT, and exchanges it with the GitHub API for an installation token scoped to the configured repository and permissions. Callers receive the token and its expiration and use it for the lifetime of their task.
+The Lambda reads three values from AWS SSM Parameter Store: a GitHub App client ID, an installation ID, and the App's RSA private key. It signs a short-lived JWT, validates that the configured owner/repository belongs to that installation, then exchanges the JWT with the GitHub API for an installation token scoped to the configured repository and permissions.
 
 Boundaries kept deliberately small:
 
 - No secrets are stored outside AWS SSM; the broker only reads them to mint a token.
-- The Lambda accepts empty input and returns a JSON payload; it is not an open HTTP API.
-- The issued token is always scoped — a compromise is bounded to the target repository and permissions you configure.
+- The Lambda accepts only empty or `null` invocation payloads, so callers cannot request custom token scope.
+- The issued token is scoped to one configured repository and the configured permission set.
+- The broker returns token metadata only; it does not clone repositories or decrypt repository contents.
 
-## Prerequisites
+## Build and Test
 
-To run your own broker you will need:
+This repository uses [Moon](https://moonrepo.dev) for CI task orchestration and a [Justfile](https://just.systems/) for local convenience.
 
-- A GitHub App registered in your organization or account, with an RSA private key (PEM) and at least one installation.
-- An AWS account with permission to deploy a Lambda function and write SSM parameters.
-- Go (matching the version in `go.mod` once it lands) and the Moon toolchain used by this repo.
+```sh
+moon run broker:check
+moon run broker:integration
+```
 
-## Configuration
+Equivalent Just recipes are available:
 
-The broker reads configuration from environment variables and SSM:
+```sh
+just check
+just integration
+```
 
-- `AWS_REGION` — AWS region for SSM and Lambda. Required.
-- SSM parameter names for `client_id`, `installation_id`, and `private_key`. Defaults and overrides will be documented alongside the implementation.
-- Target repository and permissions for the issued token.
+`broker:check` runs formatting, unit tests, and the Lambda build. `broker:integration` runs the Docker-backed integration suite against a Moto SSM server, a Lambda Runtime API stub, and a GitHub App endpoint stub.
 
-Exact parameter names, defaults, and the response schema will be documented in `docs/` as the implementation lands.
+## Runtime Configuration
+
+The broker reads configuration from environment variables:
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `AWS_REGION` | yes | none | AWS region used by the SDK for SSM. |
+| `GITHUB_TOKEN_BROKER_REPOSITORY_OWNER` | yes | none | GitHub owner for the repository token. |
+| `GITHUB_TOKEN_BROKER_REPOSITORY_NAME` | yes | none | GitHub repository name for the token. |
+| `GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM` | no | `/github-token-broker/app/client-id` | SSM parameter containing the GitHub App client ID. |
+| `GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM` | no | `/github-token-broker/app/installation-id` | SSM parameter containing the GitHub App installation ID. |
+| `GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM` | no | `/github-token-broker/app/private-key-pem` | SSM SecureString parameter containing the GitHub App private key PEM. |
+| `GITHUB_TOKEN_BROKER_PERMISSIONS` | no | `{"contents":"read"}` | JSON object of GitHub repository permissions to request. |
+| `GITHUB_TOKEN_BROKER_GITHUB_API_BASE_URL` | no | `https://api.github.com` | GitHub API base URL. Override mainly for tests or GitHub Enterprise compatibility. |
+| `GITHUB_TOKEN_BROKER_LOG_LEVEL` | no | `info` | One of `debug`, `info`, `warn`, or `error`. |
+
+The SSM parameter names must be absolute paths. The private key parameter should be a SecureString.
+
+## Invocation Contract
+
+Invoke the Lambda with an empty payload or JSON `null`. Any other payload is rejected.
+
+Successful responses have this shape:
+
+```json
+{
+  "token": "ghs_...",
+  "expires_at": "2026-04-22T00:00:00Z",
+  "repositories": ["example-owner/example-repo"],
+  "permissions": {
+    "contents": "read"
+  }
+}
+```
+
+The token is intentionally logged nowhere. Callers should treat it as a secret and discard it after the task completes.
 
 ## Documentation
 
@@ -41,7 +77,7 @@ The Docusaurus site under [`docs/`](docs/) is the canonical location for configu
 
 - Questions and general discussion: [GitHub Discussions](https://github.com/meigma/github-token-broker/discussions).
 - Bug reports: [GitHub Issues](https://github.com/meigma/github-token-broker/issues).
-- Do **not** report vulnerabilities in public channels. See [SECURITY.md](SECURITY.md).
+- Do not report vulnerabilities in public channels. See [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
