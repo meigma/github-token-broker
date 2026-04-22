@@ -1,0 +1,30 @@
+layer: 'scaffolding'
+
+project:
+  title: 'Repository template'
+  description: 'Workspace-level configuration, shared automation, and template defaults.'
+  owner: 'REPLACE_ME_OWNER'
+  maintainers:
+    - 'REPLACE_ME_MAINTAINER'
+
+workspace:
+  inheritedTasks:
+    include: []
+
+# Add repository-wide maintenance tasks here as the template grows.
+# Examples:
+#
+# tasks:
+#   format:
+#     command: 'prettier --check .'
+#     toolchains: ['javascript', 'node', 'npm']
+#     inputs: []
+#     options:
+#       cache: false
+#
+#   docs-build:
+#     command: 'moon run docs:build'
+#     toolchains: 'system'
+#     inputs: []
+#     options:
+#       cache: false

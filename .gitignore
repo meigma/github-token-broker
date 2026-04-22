@@ -1,0 +1,73 @@
+# Moon
+.moon/cache/
+.moon/docker/
+
+# Environment
+.env
+.env.*
+.envrc
+
+# Go
+bin/
+cover.out
+coverage.out
+coverage.html
+*.test
+*.prof
+vendor/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+htmlcov/
+.coverage
+.coverage.*
+dist/
+build/
+site/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Node / TypeScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.yarn/build-state.yml
+*.tsbuildinfo
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+coverage/
+
+# Template repo outputs
+docs/node_modules/
+docs/build/
+docs/.docusaurus/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

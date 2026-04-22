@@ -1,0 +1,44 @@
+language: 'typescript'
+layer: 'application'
+stack: 'frontend'
+tags:
+  - 'docs'
+  - 'docusaurus'
+
+project:
+  title: 'PROJECT_NAME docs'
+  description: 'Docusaurus documentation site for PROJECT_NAME.'
+  owner: 'REPLACE_ME_OWNER'
+  maintainers:
+    - 'REPLACE_ME_MAINTAINER'
+
+toolchains:
+  default: 'node'
+
+fileGroups:
+  configs:
+    - 'docusaurus.config.ts'
+    - 'tsconfig.json'
+    - 'package.json'
+    - 'package-lock.json'
+  sources:
+    - 'docs/**/*'
+    - 'src/**/*'
+    - 'static/**/*'
+
+# Moon will infer tasks like build, start, serve, and typecheck from
+# package.json scripts because javascript.inferTasksFromScripts is enabled
+# in /.moon/toolchains.yml.
+#
+# Add explicit tasks here when you need custom inputs, outputs, or
+# cross-project dependencies.
+#
+# tasks:
+#   build-static:
+#     command: 'npm run build'
+#     toolchains: ['javascript', 'node', 'npm']
+#     inputs:
+#       - '@group(configs)'
+#       - '@group(sources)'
+#     outputs:
+#       - 'build/**/*'
