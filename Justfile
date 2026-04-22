@@ -18,3 +18,6 @@ build:
 check:
     go test ./cmd/... ./internal/...
     just build
+
+smoke:
+    go test -tags integration -count=1 ./cmd/...

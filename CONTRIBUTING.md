@@ -59,6 +59,18 @@ just check
 
 Individual verbs (`fmt`, `test`, `build`) are available on both runners. `build` produces a reproducible `linux/arm64` Lambda zip at `dist/github-token-broker.zip`.
 
+### Smoke test
+
+`broker:smoke` runs an integration test that exercises the main binary against in-process stubs for the AWS Lambda Runtime API, AWS SSM, and the GitHub App endpoint. It boots a host-native build of `cmd/github-token-broker`, invokes it once with an empty payload, and asserts the response body carries a freshly minted token for the configured target repository.
+
+```sh
+moon run broker:smoke
+# or
+just smoke
+```
+
+The smoke test is gated behind the `integration` build tag so it does not run during `broker:test`. `moon ci` runs it automatically alongside the unit suite.
+
 ### Docs site
 
 ```sh
