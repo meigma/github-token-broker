@@ -20,9 +20,9 @@ import (
 
 func TestCreateInstallationToken(t *testing.T) {
 	now := time.Date(2026, 4, 21, 23, 0, 0, 0, time.UTC)
+	var requests []string
 	httpClient := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		assert.Equal(t, http.MethodPost, req.Method)
-		assert.Equal(t, "https://api.github.test/app/installations/123/access_tokens", req.URL.String())
+		requests = append(requests, req.Method+" "+req.URL.Path)
 		assert.Equal(t, "application/vnd.github+json", req.Header.Get("Accept"))
 		assert.Equal(t, "github-token-broker", req.Header.Get("User-Agent"))
 
@@ -34,15 +34,27 @@ func TestCreateInstallationToken(t *testing.T) {
 			"exp": float64(now.Add(jwtLifetime).Unix()),
 		})
 
-		var body struct {
-			Repositories []string          `json:"repositories"`
-			Permissions  map[string]string `json:"permissions"`
-		}
-		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
-		assert.Equal(t, []string{"widgets"}, body.Repositories)
-		assert.Equal(t, map[string]string{"contents": "read"}, body.Permissions)
+		switch req.URL.String() {
+		case "https://api.github.test/repos/acme/widgets/installation":
+			assert.Equal(t, http.MethodGet, req.Method)
+			return jsonResponse(http.StatusOK, `{"id":123}`), nil
+		case "https://api.github.test/app/installations/123/access_tokens":
+			assert.Equal(t, http.MethodPost, req.Method)
+			assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
 
-		return jsonResponse(http.StatusCreated, `{"token":"ghs_test","expires_at":"2026-04-22T00:00:00Z"}`), nil
+			var body struct {
+				Repositories []string          `json:"repositories"`
+				Permissions  map[string]string `json:"permissions"`
+			}
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+			assert.Equal(t, []string{"widgets"}, body.Repositories)
+			assert.Equal(t, map[string]string{"contents": "read"}, body.Permissions)
+
+			return jsonResponse(http.StatusCreated, `{"token":"ghs_test","expires_at":"2026-04-22T00:00:00Z"}`), nil
+		default:
+			t.Fatalf("unexpected GitHub request: %s %s", req.Method, req.URL.String())
+			return nil, nil
+		}
 	})
 	client, err := NewClient(httpClient, "https://api.github.test", func() time.Time { return now })
 	require.NoError(t, err)
@@ -62,11 +74,18 @@ func TestCreateInstallationToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ghs_test", token.Token)
 	assert.Equal(t, time.Date(2026, 4, 22, 0, 0, 0, 0, time.UTC), token.ExpiresAt)
+	assert.Equal(t, []string{
+		"GET /repos/acme/widgets/installation",
+		"POST /app/installations/123/access_tokens",
+	}, requests)
 }
 
 func TestCreateInstallationTokenAcceptsPKCS8Key(t *testing.T) {
 	privateKey := testPrivateKeyPKCS8PEM(t)
 	httpClient := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return jsonResponse(http.StatusOK, `{"id":123}`), nil
+		}
 		return jsonResponse(http.StatusCreated, `{"token":"ghs_pkcs8","expires_at":"2026-04-22T00:00:00Z"}`), nil
 	})
 	client, err := NewClient(httpClient, "https://api.github.test", nil)
@@ -88,9 +107,42 @@ func TestCreateInstallationTokenAcceptsPKCS8Key(t *testing.T) {
 	assert.Equal(t, "ghs_pkcs8", token.Token)
 }
 
+func TestCreateInstallationTokenRejectsInstallationMismatch(t *testing.T) {
+	privateKey := testPrivateKeyPEM(t)
+	var tokenRequestIssued bool
+	httpClient := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodPost {
+			tokenRequestIssued = true
+		}
+		return jsonResponse(http.StatusOK, `{"id":456}`), nil
+	})
+	client, err := NewClient(httpClient, "https://api.github.test", nil)
+	require.NoError(t, err)
+
+	_, err = client.CreateInstallationToken(context.Background(), AppConfig{
+		ClientID:       "Iv1.client",
+		InstallationID: "123",
+		PrivateKeyPEM:  privateKey,
+	}, Target{
+		Owner:      "acme",
+		Repository: "widgets",
+		Permissions: map[string]string{
+			"contents": "read",
+		},
+	})
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "does not match configured installation 123")
+	assert.False(t, tokenRequestIssued, "token request should not be issued after an installation mismatch")
+	assert.NotContains(t, err.Error(), privateKey)
+}
+
 func TestCreateInstallationTokenSurfacesGitHubErrorsWithoutPrivateKey(t *testing.T) {
 	privateKey := testPrivateKeyPEM(t)
 	httpClient := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return jsonResponse(http.StatusOK, `{"id":123}`), nil
+		}
 		return jsonResponse(http.StatusForbidden, `{"message":"bad credentials"}`), nil
 	})
 	client, err := NewClient(httpClient, "https://api.github.test", nil)
@@ -101,6 +153,7 @@ func TestCreateInstallationTokenSurfacesGitHubErrorsWithoutPrivateKey(t *testing
 		InstallationID: "123",
 		PrivateKeyPEM:  privateKey,
 	}, Target{
+		Owner:      "acme",
 		Repository: "widgets",
 		Permissions: map[string]string{
 			"contents": "read",
@@ -125,7 +178,10 @@ func TestCreateInstallationTokenRejectsInvalidPrivateKey(t *testing.T) {
 		ClientID:       "Iv1.client",
 		InstallationID: "123",
 		PrivateKeyPEM:  garbage,
-	}, Target{Repository: "widgets"})
+	}, Target{
+		Owner:      "acme",
+		Repository: "widgets",
+	})
 
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), garbage)

@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -109,8 +110,20 @@ func (c *Client) CreateInstallationToken(ctx context.Context, app AppConfig, tar
 		return InstallationToken{}, fmt.Errorf("GitHub App installation ID is required")
 	}
 
+	if target.Owner == "" {
+		return InstallationToken{}, fmt.Errorf("GitHub repository owner is required")
+	}
+
+	if target.Repository == "" {
+		return InstallationToken{}, fmt.Errorf("GitHub repository name is required")
+	}
+
 	jwt, err := c.signJWT(app)
 	if err != nil {
+		return InstallationToken{}, err
+	}
+
+	if err := c.validateRepositoryInstallation(ctx, jwt, app.InstallationID, target); err != nil {
 		return InstallationToken{}, err
 	}
 
@@ -174,6 +187,51 @@ func (c *Client) CreateInstallationToken(ctx context.Context, app AppConfig, tar
 		Token:     tokenResponse.Token,
 		ExpiresAt: tokenResponse.ExpiresAt,
 	}, nil
+}
+
+func (c *Client) validateRepositoryInstallation(ctx context.Context, jwt string, installationID string, target Target) error {
+	endpoint := c.baseURL.JoinPath("repos", target.Owner, target.Repository, "installation")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return fmt.Errorf("create GitHub repository-installation request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+jwt)
+	req.Header.Set("User-Agent", "github-token-broker")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request GitHub repository installation: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("read GitHub repository-installation response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("GitHub repository-installation request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	var installationResponse struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(responseBody, &installationResponse); err != nil {
+		return fmt.Errorf("decode GitHub repository-installation response: %w", err)
+	}
+
+	if installationResponse.ID == 0 {
+		return fmt.Errorf("GitHub repository-installation response did not include an installation ID")
+	}
+
+	if strconv.FormatInt(installationResponse.ID, 10) != installationID {
+		return fmt.Errorf("GitHub repository installation %d does not match configured installation %s", installationResponse.ID, installationID)
+	}
+
+	return nil
 }
 
 func (c *Client) signJWT(app AppConfig) (string, error) {
