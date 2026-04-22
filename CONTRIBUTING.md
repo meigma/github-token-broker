@@ -1,68 +1,49 @@
 # Contributing
 
-> Template note: replace every `ALL_CAPS` placeholder in this file before publishing or sharing the repository.
-
-Thank you for your interest in contributing to `PROJECT_NAME`.
+Thank you for your interest in contributing to `github-token-broker`.
 This guide covers questions, bug reports, feature requests, and pull requests.
 For private vulnerability reporting, use [SECURITY.md](SECURITY.md) instead of public channels.
 
 ## Asking Questions
 
-Use `REPLACE_ME_SUPPORT_CHANNEL` for usage questions, troubleshooting, and general discussion.
-If the project uses multiple support channels, document which kinds of questions belong in each one.
+Use [GitHub Discussions](https://github.com/meigma/github-token-broker/discussions) for usage questions, troubleshooting, and general discussion.
 
 ## Reporting Bugs
 
-Report non-security bugs through `REPLACE_ME_BUG_REPORT_CHANNEL`.
-Include the following details when possible:
+File non-security bugs as [GitHub Issues](https://github.com/meigma/github-token-broker/issues). Include:
 
-- version, commit, or environment details
+- version, commit, or deployment identifier
 - steps to reproduce
 - expected behavior
 - actual behavior
-- logs, screenshots, or a minimal reproduction
+- relevant logs or a minimal reproduction
 
 If you are reporting a security issue, stop and follow [SECURITY.md](SECURITY.md) instead.
 
 ## Proposing Features
 
-Use `REPLACE_ME_FEATURE_REQUEST_CHANNEL` for feature requests and design proposals.
-For larger changes, describe the problem, the proposed approach, and any compatibility or migration concerns before starting implementation.
+Open a GitHub Discussion before starting work on larger changes. Describe the problem, the proposed approach, and any compatibility or migration concerns. Small, self-contained improvements can go straight to a pull request.
 
 ## Pull Requests
 
-Unless the repository documents a different process, contributors should:
-
 1. Keep changes focused and scoped to a single problem.
 2. Add or update tests when behavior changes.
-3. Update documentation when user-facing behavior changes.
-4. Describe the change clearly in the pull request.
+3. Update documentation under `docs/` when user-facing behavior changes.
+4. Write a clear PR description tying the change to the problem it solves.
 5. Make sure CI passes before requesting review.
 
-Replace this section with any repository-specific expectations such as branch naming, commit conventions, changelog entries, or release notes requirements.
+Branches are integrated through squash-merge, so commit titles within a branch do not need to follow a specific convention — the merged commit title is the PR title. Keep PR titles imperative and concise.
 
 ## Local Setup
 
-Replace this section with the actual setup steps for the repository.
+This repository uses [Moon](https://moonrepo.dev) to orchestrate tasks. The Go implementation of the broker will land in a follow-up change; until then, only the docs site can be built locally:
 
 ```sh
-REPLACE_ME_SETUP_COMMAND
+moon run docs:build
 ```
 
-Useful project commands:
+Once the implementation lands, its build, test, and lint commands will be documented here and runnable via `moon run`.
 
-```sh
-REPLACE_ME_TEST_COMMAND
-REPLACE_ME_LINT_COMMAND
-REPLACE_ME_FORMAT_COMMAND
-```
+## License
 
-## Code of Conduct
-
-Replace this section with the actual Code of Conduct path or URL.
-Example: `REPLACE_ME_CODE_OF_CONDUCT_PATH_OR_URL`
-
-## License and Ownership
-
-State any contribution licensing terms only if the project actually requires them.
-If the repository uses a CLA, DCO, or other contribution agreement, replace this section with the real policy.
+This project is dual-licensed under [Apache License 2.0](LICENSE-APACHE) and the [MIT License](LICENSE-MIT). By submitting a contribution, you agree that your work may be distributed under either license, at the recipient's option. No separate CLA is required.

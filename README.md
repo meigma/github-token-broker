@@ -1,75 +1,58 @@
-# PROJECT_NAME
+# github-token-broker
 
-> Template note: replace every `ALL_CAPS` placeholder in this file before publishing or sharing the repository.
+`github-token-broker` is a small AWS Lambda function that vends short-lived, scoped GitHub App installation tokens.
+It is intended for bootstrap and automation workflows that need a GitHub token but should not carry long-lived credentials themselves, and is maintained by the [meigma](https://github.com/meigma) organization.
 
-`PROJECT_NAME` is `PROJECT_SUMMARY`.
-It is intended for `PRIMARY_USE_CASE` and is maintained by `AUTHOR_NAME` or `ORGANIZATION_NAME`.
+> **Status:** this repository is being bootstrapped from an internal service. The Go implementation will land in a follow-up change; until then, only the repository scaffolding is in place.
 
-## Quick Start
+## How it works
 
-Replace this section with the shortest working path for a new user.
+The Lambda reads three values from AWS SSM Parameter Store — a GitHub App client ID, an installation ID, and the App's RSA private key — signs a short-lived JWT, and exchanges it with the GitHub API for an installation token scoped to the configured repository and permissions. Callers receive the token and its expiration and use it for the lifetime of their task.
 
-### Prerequisites
+Boundaries kept deliberately small:
 
-- `REPLACE_ME_RUNTIME_OR_LANGUAGE`
-- `REPLACE_ME_REQUIRED_TOOLING`
-- `REPLACE_ME_EXTERNAL_DEPENDENCIES`
+- No secrets are stored outside AWS SSM; the broker only reads them to mint a token.
+- The Lambda accepts empty input and returns a JSON payload; it is not an open HTTP API.
+- The issued token is always scoped — a compromise is bounded to the target repository and permissions you configure.
 
-### Install
+## Prerequisites
 
-```sh
-REPLACE_ME_INSTALL_COMMAND
-```
+To run your own broker you will need:
 
-### Run
-
-```sh
-REPLACE_ME_START_COMMAND
-```
-
-## Usage
-
-Replace this section with the most common workflow for the repository.
-
-```sh
-REPLACE_ME_PRIMARY_COMMAND_OR_ENTRYPOINT
-```
-
-Expected result:
-
-- `REPLACE_ME_EXPECTED_OUTPUT_OR_BEHAVIOR`
+- A GitHub App registered in your organization or account, with an RSA private key (PEM) and at least one installation.
+- An AWS account with permission to deploy a Lambda function and write SSM parameters.
+- Go (matching the version in `go.mod` once it lands) and the Moon toolchain used by this repo.
 
 ## Configuration
 
-Document the minimum configuration needed to use the project.
+The broker reads configuration from environment variables and SSM:
 
-- `REPLACE_ME_ENV_VAR_NAME`: `REPLACE_ME_ENV_VAR_DESCRIPTION`
-- `REPLACE_ME_CONFIG_FILE`: `REPLACE_ME_CONFIG_FILE_PURPOSE`
+- `AWS_REGION` — AWS region for SSM and Lambda. Required.
+- SSM parameter names for `client_id`, `installation_id`, and `private_key`. Defaults and overrides will be documented alongside the implementation.
+- Target repository and permissions for the issued token.
+
+Exact parameter names, defaults, and the response schema will be documented in `docs/` as the implementation lands.
 
 ## Documentation
 
-- Main docs: `REPLACE_ME_DOCS_URL_OR_PATH`
-- Examples: `REPLACE_ME_EXAMPLES_URL_OR_PATH`
-- Architecture notes: `REPLACE_ME_ARCHITECTURE_DOC_URL_OR_PATH`
+The Docusaurus site under [`docs/`](docs/) is the canonical location for configuration, deployment, and operational guidance. Published versions will be linked here once the site is deployed.
 
 ## Support
 
-Use `REPLACE_ME_SUPPORT_CHANNEL` for questions and general support.
-Use `REPLACE_ME_BUG_REPORT_CHANNEL` for non-security bug reports.
-Do not report vulnerabilities in public channels. See [SECURITY.md](SECURITY.md).
+- Questions and general discussion: [GitHub Discussions](https://github.com/meigma/github-token-broker/discussions).
+- Bug reports: [GitHub Issues](https://github.com/meigma/github-token-broker/issues).
+- Do **not** report vulnerabilities in public channels. See [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines, local setup expectations, and pull request workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and pull request expectations.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for supported versions and the private vulnerability reporting path.
+See [SECURITY.md](SECURITY.md) for the private vulnerability reporting path.
 
 ## License
 
-Replace this section with the actual license name and add the corresponding `LICENSE` file to the repository.
+`github-token-broker` is dual-licensed under the [Apache License 2.0](LICENSE-APACHE) or the [MIT License](LICENSE-MIT), at your option.
 
-Example:
-
-`PROJECT_NAME` is licensed under the `REPLACE_ME_LICENSE_NAME`.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project shall be dual-licensed as above, without any additional terms or conditions.
