@@ -71,3 +71,9 @@ docs/.docusaurus/
 .idea/
 .vscode/
 *.swp
+
+# AI session protocol
+.agent/
+.claude/
+.journal/
+.wt/
