@@ -5,7 +5,7 @@
 projects:
   globs: []
   sources:
-    root: '.'
+    broker: '.'
     docs: 'docs'
 
   # Uncomment to auto-discover more projects as the repository grows.
@@ -24,7 +24,7 @@ projects:
 defaultProject: 'docs'
 
 vcs:
-  defaultBranch: 'main'
+  defaultBranch: 'master'
   provider: 'github'
 
 # Uncomment when you want Moon to aggregate project owners into CODEOWNERS.

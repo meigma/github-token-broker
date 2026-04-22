@@ -4,7 +4,7 @@
 
 javascript:
   packageManager: 'npm'
-  inferTasksFromScripts: true
+  inferTasksFromScripts: false
 
 npm: {}
 
@@ -32,9 +32,9 @@ node:
 #   version: 'REPLACE_ME_DENO_VERSION'
 
 # Stable non-JavaScript toolchains in Moon v2.
-# go:
-#   version: 'REPLACE_ME_GO_VERSION'
-#
+go:
+  version: '1.26.2'
+
 # rust:
 #   version: 'REPLACE_ME_RUST_VERSION'
 #   components: ['clippy', 'rustfmt']

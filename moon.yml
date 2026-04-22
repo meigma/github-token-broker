@@ -1,30 +1,54 @@
-layer: 'scaffolding'
+language: 'go'
+layer: 'application'
+stack: 'backend'
+tags:
+  - 'go'
+  - 'service'
+  - 'aws'
 
 project:
-  title: 'github-token-broker workspace'
-  description: 'Workspace-level configuration and shared automation for the github-token-broker service.'
+  title: 'github-token-broker'
+  description: 'AWS Lambda broker for short-lived GitHub App installation tokens.'
   owner: '@meigma'
   maintainers:
     - '@meigma'
 
-workspace:
-  inheritedTasks:
-    include: []
+toolchains:
+  default: 'go'
 
-# Add repository-wide maintenance tasks here as the template grows.
-# Examples:
-#
-# tasks:
-#   format:
-#     command: 'prettier --check .'
-#     toolchains: ['javascript', 'node', 'npm']
-#     inputs: []
-#     options:
-#       cache: false
-#
-#   docs-build:
-#     command: 'moon run docs:build'
-#     toolchains: 'system'
-#     inputs: []
-#     options:
-#       cache: false
+fileGroups:
+  sources:
+    - 'cmd/**/*.go'
+    - 'internal/**/*.go'
+  mods:
+    - 'go.mod'
+    - 'go.sum'
+
+tasks:
+  fmt:
+    command: 'gofmt -l ./cmd'
+    toolchains: ['go']
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'go test ./...'
+    toolchains: ['go']
+    inputs:
+      - '@group(sources)'
+      - '@group(mods)'
+
+  build:
+    command: 'bash -c "rm -rf build dist && mkdir -p build dist && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -buildvcs=false -tags lambda.norpc -trimpath -ldflags=\"-s -w\" -o build/bootstrap ./cmd/github-token-broker && (cd build && zip -X ../dist/github-token-broker.zip bootstrap)"'
+    toolchains: ['go']
+    inputs:
+      - '@group(sources)'
+      - '@group(mods)'
+    outputs:
+      - 'dist/github-token-broker.zip'
+
+  check:
+    deps:
+      - '~:fmt'
+      - '~:test'
+      - '~:build'

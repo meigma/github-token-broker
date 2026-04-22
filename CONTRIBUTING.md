@@ -36,13 +36,34 @@ Branches are integrated through squash-merge, so commit titles within a branch d
 
 ## Local Setup
 
-This repository uses [Moon](https://moonrepo.dev) to orchestrate tasks. The Go implementation of the broker will land in a follow-up change; until then, only the docs site can be built locally:
+This repository uses [Moon](https://moonrepo.dev) to orchestrate tasks, with a developer-facing [Justfile](https://just.systems) wrapper for common recipes.
+
+### Prerequisites
+
+- [Moon](https://moonrepo.dev/docs/install) — Moon provisions the Go toolchain pinned in `.moon/toolchains.yml` (currently Go 1.26.2).
+- [Just](https://just.systems/) — optional but convenient for local work.
+
+### Go service
+
+The service lives at the repository root: module path `github.com/meigma/github-token-broker`, entry point `cmd/github-token-broker`.
+
+Build, test, and lint the Lambda from a clean checkout:
+
+```sh
+# Moon — authoritative in CI (this is what `moon ci` runs)
+moon run broker:check
+
+# Justfile — same commands, direct shell invocation
+just check
+```
+
+Individual verbs (`fmt`, `test`, `build`) are available on both runners. `build` produces a reproducible `linux/arm64` Lambda zip at `dist/github-token-broker.zip`.
+
+### Docs site
 
 ```sh
 moon run docs:build
 ```
-
-Once the implementation lands, its build, test, and lint commands will be documented here and runnable via `moon run`.
 
 ## License
 
