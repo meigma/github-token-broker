@@ -1,0 +1,20 @@
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+default:
+    @just --list
+
+fmt:
+    gofmt -w ./cmd
+
+test:
+    go test ./...
+
+build:
+    rm -rf build dist
+    mkdir -p build dist
+    GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -buildvcs=false -tags lambda.norpc -trimpath -ldflags="-s -w" -o build/bootstrap ./cmd/github-token-broker
+    (cd build && zip -X ../dist/github-token-broker.zip bootstrap)
+
+check:
+    go test ./...
+    just build
