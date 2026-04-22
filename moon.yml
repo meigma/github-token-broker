@@ -21,7 +21,7 @@ fileGroups:
     - 'cmd/**/*.go'
     - 'internal/**/*.go'
   integrationTests:
-    - 'cmd/**/integration_test.go'
+    - 'internal/integration/**/*.go'
   mods:
     - 'go.mod'
     - 'go.sum'
@@ -55,8 +55,8 @@ tasks:
       - '~:test'
       - '~:build'
 
-  smoke:
-    command: 'go test -tags integration -count 1 ./cmd/...'
+  integration:
+    command: 'go test -tags integration -count 1 ./internal/integration'
     toolchains: ['go']
     inputs:
       - '@group(sources)'
