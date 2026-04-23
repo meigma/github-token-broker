@@ -20,7 +20,7 @@ The `gh` CLI must be installed and authenticated on the machine running `apply`;
 After apply, invoke the function:
 
 ```sh
-aws lambda invoke --function-name github-token-broker --payload '{}' --cli-binary-format raw-in-base64-out /tmp/out.json
+aws lambda invoke --function-name github-token-broker --payload 'null' --cli-binary-format raw-in-base64-out /tmp/out.json
 cat /tmp/out.json
 ```
 
