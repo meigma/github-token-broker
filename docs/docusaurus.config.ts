@@ -8,8 +8,8 @@ const config: Config = {
   future: {
     v4: true,
   },
-  url: 'https://meigma.github.io',
-  baseUrl: '/github-token-broker/',
+  url: 'https://github-token-broker.meigma.dev',
+  baseUrl: '/',
   organizationName: 'meigma',
   projectName: 'github-token-broker',
   onBrokenLinks: 'throw',

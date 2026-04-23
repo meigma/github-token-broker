@@ -98,12 +98,12 @@ See [docs/explanation/release-architecture.md](docs/docs/explanation/release-arc
 
 ## Documentation
 
-The Docusaurus site under [`docs/`](docs/) is the canonical location for everything beyond this README:
+Full documentation is published at <https://github-token-broker.meigma.dev>. The source lives under [`docs/`](docs/) and is organized by [Diátaxis](https://diataxis.fr/) quadrant:
 
-- [Tutorial: deploy your first broker](docs/docs/tutorials/deploy-your-first-broker.md)
-- [How-to guides](docs/docs/how-to/) — rotate the private key, change target repo, use with GitHub Enterprise Server.
-- [Reference](docs/docs/reference/environment-variables.md) — env vars, response schema, IAM policy, SSM parameters, error messages.
-- [Explanation](docs/docs/explanation/architecture.md) — architecture diagrams, security model, design rationale.
+- [Tutorial: deploy your first broker](https://github-token-broker.meigma.dev/tutorials/deploy-your-first-broker)
+- [How-to guides](https://github-token-broker.meigma.dev/how-to/rotate-github-app-private-key) — rotate the private key, change target repo, use with GitHub Enterprise Server.
+- [Reference](https://github-token-broker.meigma.dev/reference/environment-variables) — env vars, response schema, IAM policy, SSM parameters, error messages.
+- [Explanation](https://github-token-broker.meigma.dev/explanation/architecture) — architecture diagrams, security model, design rationale.
 
 ## Support
 
