@@ -32,7 +32,27 @@ Open a GitHub Discussion before starting work on larger changes. Describe the pr
 4. Write a clear PR description tying the change to the problem it solves.
 5. Make sure CI passes before requesting review.
 
-Branches are integrated through squash-merge, so commit titles within a branch do not need to follow a specific convention — the merged commit title is the PR title. Keep PR titles imperative and concise.
+### Conventional Commits (PR titles)
+
+Branches are integrated through squash-merge, so only the PR title reaches `master`. Release automation reads that commit to decide version bumps and populate the changelog, so **PR titles MUST follow [Conventional Commits](https://www.conventionalcommits.org/)**.
+
+Supported types:
+
+| Type | When to use | Appears in CHANGELOG |
+| --- | --- | --- |
+| `feat` | User-facing feature or addition | Yes, under "Features" |
+| `fix` | User-facing bug fix | Yes, under "Bug Fixes" |
+| `perf` | Performance improvement | Yes, under "Performance" |
+| `revert` | Reverts a previous change | Yes, under "Reverts" |
+| `docs` | Documentation-only change | Hidden |
+| `chore` | Maintenance, dependencies, internal cleanup | Hidden |
+| `build` | Build system or toolchain change | Hidden |
+| `ci` | CI/workflow change | Hidden |
+| `test` | Test-only change | Hidden |
+
+Breaking changes: use `feat!:` (or `fix!:`) in the PR title, or include a `BREAKING CHANGE:` footer in the PR body. Either form bumps the major version (post-1.0) and is surfaced prominently in the changelog.
+
+Scopes are optional and generally unnecessary for this single-package repo. Per-commit titles within a branch remain free-form — they are squashed away and never reach `master`. Keep PR titles imperative, concise, and in lowercase after the type prefix.
 
 ## Local Setup
 
