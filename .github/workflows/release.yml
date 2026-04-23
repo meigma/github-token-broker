@@ -15,7 +15,9 @@ jobs:
   verify-draft-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # contents: write is required to view draft releases via the Releases
+      # API — with contents: read, gh release view returns 404 for drafts.
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
