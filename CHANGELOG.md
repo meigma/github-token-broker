@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/meigma/github-token-broker/compare/v1.0.0...v1.1.0) (2026-04-23)
+
+
+### Features
+
+* **terraform:** reusable module for deploying the broker Lambda ([#25](https://github.com/meigma/github-token-broker/issues/25)) ([8409a8a](https://github.com/meigma/github-token-broker/commit/8409a8a806ac1e6c23af40ad29208473c7640224))
+
 ## 1.0.0 (2026-04-23)
 
 
