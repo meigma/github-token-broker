@@ -57,9 +57,13 @@ jobs:
           cat checksums.txt
 
       - name: Generate SBOM
+        # anchore/sbom-action treats `path` as a directory (prefixed with
+        # dir: internally), so pointing it at the zip fails. Scan the
+        # build/ directory which contains just the bootstrap binary —
+        # syft resolves Go module dependencies directly from the binary.
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          path: dist/github-token-broker.zip
+          path: build
           format: spdx-json
           output-file: dist/github-token-broker.zip.spdx.json
           upload-artifact: false
