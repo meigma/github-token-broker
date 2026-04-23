@@ -69,6 +69,45 @@ Successful responses have this shape:
 
 The token is intentionally logged nowhere. Callers should treat it as a secret and discard it after the task completes.
 
+## Verification
+
+Releases ship only the Lambda zip. Build provenance and an SBOM are persisted to GitHub's Attestations API; verify them with [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify) rather than downloading signature or SBOM files from the release page.
+
+```sh
+TAG=v1.0.0
+gh release download "$TAG" -R meigma/github-token-broker -p 'github-token-broker.zip'
+
+gh release verify "$TAG" -R meigma/github-token-broker
+gh release verify-asset "$TAG" ./github-token-broker.zip -R meigma/github-token-broker
+
+gh attestation verify ./github-token-broker.zip \
+  --repo meigma/github-token-broker \
+  --signer-workflow meigma/github-token-broker/.github/workflows/reusable-release.yml \
+  --source-ref "refs/tags/$TAG" \
+  --deny-self-hosted-runners
+```
+
+The attestation call above validates the SLSA build provenance by default. To validate the SBOM attestation specifically, add a predicate filter:
+
+```sh
+gh attestation verify ./github-token-broker.zip \
+  --repo meigma/github-token-broker \
+  --predicate-type https://spdx.dev/Document
+```
+
+For air-gapped or offline verification, download the attestation bundle first and pass it explicitly:
+
+```sh
+gh attestation download ./github-token-broker.zip -R meigma/github-token-broker
+gh attestation verify ./github-token-broker.zip \
+  --bundle github-token-broker.zip.bundle.jsonl \
+  --signer-workflow meigma/github-token-broker/.github/workflows/reusable-release.yml \
+  --source-ref "refs/tags/$TAG" \
+  --deny-self-hosted-runners
+```
+
+See [docs/explanation/release-architecture.md](docs/docs/explanation/release-architecture.md) for the full pipeline design and the rationale behind the attestation-only verification channel.
+
 ## Documentation
 
 The Docusaurus site under [`docs/`](docs/) is the canonical location for configuration, deployment, and operational guidance. Published versions will be linked here once the site is deployed.
