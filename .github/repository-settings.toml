@@ -88,7 +88,12 @@ block_force_pushes = true
 
 bypass = [
   { type = "repository_admin_role", mode = "always" },
-  # { type = "app", slug = "meigma-release-please", mode = "always" },
+  # Intent: allow the meigma-release-please GitHub App to push version tags.
+  # Expressed as type = "integration" with the explicit App ID so the
+  # configure_github_repo.py apply path works without an App-authorized
+  # token (the slug-based form requires user/installations access).
+  # App: https://github.com/apps/meigma-release-please (id 3342783).
+  { type = "integration", actor_id = 3342783, mode = "always" },
 ]
 
 [rulesets.tags_default.status_checks]
