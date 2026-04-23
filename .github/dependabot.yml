@@ -30,3 +30,13 @@ updates:
     labels:
       - dependencies
       - documentation
+
+  - package-ecosystem: terraform
+    directory: /terraform
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+      - terraform

@@ -71,11 +71,14 @@ The token is intentionally logged nowhere. Callers should treat it as a secret a
 
 ## Verification
 
-Releases ship only the Lambda zip. Build provenance and an SBOM are persisted to GitHub's Attestations API; verify them with [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify) rather than downloading signature or SBOM files from the release page.
+Releases ship the Lambda zip alongside a `checksums.txt` (SHA256). Build provenance and an SBOM are persisted to GitHub's Attestations API; verify them with [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify) rather than downloading signature or SBOM files from the release page.
 
 ```sh
 TAG=v1.0.0
-gh release download "$TAG" -R meigma/github-token-broker -p 'github-token-broker.zip'
+gh release download "$TAG" -R meigma/github-token-broker \
+  -p 'github-token-broker.zip' -p 'checksums.txt'
+
+sha256sum --check checksums.txt
 
 gh release verify "$TAG" -R meigma/github-token-broker
 gh release verify-asset "$TAG" ./github-token-broker.zip -R meigma/github-token-broker
@@ -86,6 +89,8 @@ gh attestation verify ./github-token-broker.zip \
   --source-ref "refs/tags/$TAG" \
   --deny-self-hosted-runners
 ```
+
+The `sha256sum` check is defense-in-depth against a corrupted download; `gh attestation verify` is the canonical supply-chain check. `checksums.txt` itself is bound to the provenance attestation, so anchor trust in the attestation rather than the file alone.
 
 The attestation call above validates the SLSA build provenance by default. To validate the SBOM attestation specifically, add a predicate filter:
 

@@ -1,0 +1,134 @@
+name: Terraform
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform.yml'
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform.yml'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        working-directory: terraform
+        run: terraform fmt -check -recursive -diff
+
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        directory:
+          - terraform
+          - terraform/examples/basic
+          - terraform/examples/function-url
+          - terraform/examples/with-ssm-bootstrap
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: ${{ matrix.directory }}
+        run: terraform init -backend=false -input=false
+
+      - name: terraform validate
+        working-directory: ${{ matrix.directory }}
+        run: terraform validate -no-color
+
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up tflint
+        uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
+        with:
+          tflint_version: v0.62.0
+
+      - name: tflint --init
+        working-directory: terraform
+        run: tflint --init
+
+      - name: tflint
+        working-directory: terraform
+        run: tflint --recursive
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Trivy misconfiguration scan
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: terraform
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check terraform-docs is in sync
+        uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
+        with:
+          working-dir: terraform
+          output-file: README.md
+          output-method: inject
+          fail-on-diff: true
