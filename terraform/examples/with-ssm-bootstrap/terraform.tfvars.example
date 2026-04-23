@@ -1,0 +1,17 @@
+region           = "us-east-1"
+repository_owner = "example-org"
+repository_name  = "example-repo"
+release_version  = "v1.0.0"
+
+# Leave create_ssm_parameters=false in production. Enable only for
+# first-time bootstrap in a non-production account.
+create_ssm_parameters      = false
+# github_app_client_id       = "Iv23li..."
+# github_app_installation_id = "12345678"
+# github_app_private_key_pem = <<EOT
+# -----BEGIN RSA PRIVATE KEY-----
+# ...
+# -----END RSA PRIVATE KEY-----
+# EOT
+# kms_key_id  = "alias/github-token-broker"
+# kms_key_arn = "arn:aws:kms:us-east-1:123456789012:alias/github-token-broker"

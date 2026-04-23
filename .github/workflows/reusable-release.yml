@@ -81,11 +81,14 @@ jobs:
           predicate-type: https://spdx.dev/Document
           predicate-path: dist/github-token-broker.zip.spdx.json
 
-      - name: Upload Lambda zip to draft release
+      - name: Upload release assets to draft release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          gh release upload "${TAG}" dist/github-token-broker.zip --clobber
+          gh release upload "${TAG}" \
+            dist/github-token-broker.zip \
+            dist/checksums.txt \
+            --clobber
