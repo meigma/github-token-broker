@@ -70,7 +70,7 @@ End-to-end validation requires an AWS account and a GitHub App with an installat
    ```
 4. Invoke the Lambda:
    ```sh
-   aws lambda invoke --function-name github-token-broker --payload '{}' \
+   aws lambda invoke --function-name github-token-broker --payload 'null' \
      --cli-binary-format raw-in-base64-out /tmp/out.json
    jq . /tmp/out.json
    ```

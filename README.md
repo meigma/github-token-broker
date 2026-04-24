@@ -14,6 +14,26 @@ Boundaries kept deliberately small:
 - The issued token is scoped to one configured repository and the configured permission set.
 - The broker returns token metadata only; it does not clone repositories or decrypt repository contents.
 
+## Quick Start
+
+Deploy the Lambda by pinning the first-party Terraform module from git:
+
+```hcl
+module "broker" {
+  source = "github.com/meigma/github-token-broker//terraform?ref=v1.1.0"
+
+  function_name    = "github-token-broker"
+  repository_owner = "your-org"
+  repository_name  = "your-repo"
+
+  lambda_artifact = {
+    release_version = "v1.1.0"
+  }
+}
+```
+
+Apply, then invoke with `aws lambda invoke --payload 'null'`. Walk through the full setup — GitHub App, SSM parameters, invocation — in the [Deploy your first broker tutorial](docs/docs/tutorials/deploy-your-first-broker.md).
+
 ## Build and Test
 
 This repository uses [Moon](https://moonrepo.dev) for CI task orchestration and a [Justfile](https://just.systems/) for local convenience.
@@ -32,49 +52,12 @@ just integration
 
 `broker:check` runs formatting, unit tests, and the Lambda build. `broker:integration` runs the Docker-backed integration suite against a Moto SSM server, a Lambda Runtime API stub, and a GitHub App endpoint stub.
 
-## Runtime Configuration
-
-The broker reads configuration from environment variables:
-
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `AWS_REGION` | yes | none | AWS region used by the SDK for SSM. |
-| `GITHUB_TOKEN_BROKER_REPOSITORY_OWNER` | yes | none | GitHub owner for the repository token. |
-| `GITHUB_TOKEN_BROKER_REPOSITORY_NAME` | yes | none | GitHub repository name for the token. |
-| `GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM` | no | `/github-token-broker/app/client-id` | SSM parameter containing the GitHub App client ID. |
-| `GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM` | no | `/github-token-broker/app/installation-id` | SSM parameter containing the GitHub App installation ID. |
-| `GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM` | no | `/github-token-broker/app/private-key-pem` | SSM SecureString parameter containing the GitHub App private key PEM. |
-| `GITHUB_TOKEN_BROKER_PERMISSIONS` | no | `{"contents":"read"}` | JSON object of GitHub repository permissions to request. |
-| `GITHUB_TOKEN_BROKER_GITHUB_API_BASE_URL` | no | `https://api.github.com` | GitHub API base URL. Override mainly for tests or GitHub Enterprise compatibility. |
-| `GITHUB_TOKEN_BROKER_LOG_LEVEL` | no | `info` | One of `debug`, `info`, `warn`, or `error`. |
-
-The SSM parameter names must be absolute paths. The private key parameter should be a SecureString.
-
-## Invocation Contract
-
-Invoke the Lambda with an empty payload or JSON `null`. Any other payload is rejected.
-
-Successful responses have this shape:
-
-```json
-{
-  "token": "ghs_...",
-  "expires_at": "2026-04-22T00:00:00Z",
-  "repositories": ["example-owner/example-repo"],
-  "permissions": {
-    "contents": "read"
-  }
-}
-```
-
-The token is intentionally logged nowhere. Callers should treat it as a secret and discard it after the task completes.
-
 ## Verification
 
 Releases ship the Lambda zip alongside a `checksums.txt` (SHA256). Build provenance and an SBOM are persisted to GitHub's Attestations API; verify them with [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify) rather than downloading signature or SBOM files from the release page.
 
 ```sh
-TAG=v1.0.0
+TAG=v1.1.0
 gh release download "$TAG" -R meigma/github-token-broker \
   -p 'github-token-broker.zip' -p 'checksums.txt'
 
@@ -115,7 +98,12 @@ See [docs/explanation/release-architecture.md](docs/docs/explanation/release-arc
 
 ## Documentation
 
-The Docusaurus site under [`docs/`](docs/) is the canonical location for configuration, deployment, and operational guidance. Published versions will be linked here once the site is deployed.
+Full documentation is published at <https://github-token-broker.meigma.dev>. The source lives under [`docs/`](docs/) and is organized by [Diátaxis](https://diataxis.fr/) quadrant:
+
+- [Tutorial: deploy your first broker](https://github-token-broker.meigma.dev/tutorials/deploy-your-first-broker)
+- [How-to guides](https://github-token-broker.meigma.dev/how-to/rotate-github-app-private-key) — rotate the private key, change target repo, use with GitHub Enterprise Server.
+- [Reference](https://github-token-broker.meigma.dev/reference/environment-variables) — env vars, response schema, IAM policy, SSM parameters, error messages.
+- [Explanation](https://github-token-broker.meigma.dev/explanation/architecture) — architecture diagrams, security model, design rationale.
 
 ## Support
 

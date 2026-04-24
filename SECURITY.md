@@ -25,3 +25,7 @@ Because this service brokers GitHub App tokens, please flag findings that could 
 ## Disclosure
 
 Fixes are coordinated through GitHub security advisories on this repository. Reporters will be credited in the advisory unless they request otherwise. No response-time guarantees are made beyond reasonable effort.
+
+## Key Rotation
+
+If a GitHub App private key is suspected compromised, rotate it following the [rotate-github-app-private-key how-to](docs/docs/how-to/rotate-github-app-private-key.md). Overwriting the SSM SecureString parameter is a no-downtime rotation — the Lambda picks up the new key on the next invocation.

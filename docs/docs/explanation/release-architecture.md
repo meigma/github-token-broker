@@ -1,9 +1,10 @@
 ---
-title: Release Architecture
+title: Release architecture
+sidebar_position: 5
 description: How github-token-broker versions, builds, signs, and publishes releases.
 ---
 
-# Release Architecture
+# Release architecture
 
 `github-token-broker` splits release work across four workflow pieces so that
 versioning, publication, and attestation each have clear ownership and a
