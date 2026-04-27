@@ -13,11 +13,6 @@ output "function_invoke_arn" {
   value       = aws_lambda_function.broker.invoke_arn
 }
 
-output "function_url" {
-  description = "Function URL when enable_function_url is true; null otherwise."
-  value       = try(aws_lambda_function_url.broker[0].function_url, null)
-}
-
 output "role_arn" {
   description = "ARN of the Lambda execution role."
   value       = aws_iam_role.lambda.arn

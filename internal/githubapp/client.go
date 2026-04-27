@@ -15,14 +15,18 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const jwtLifetime = 9 * time.Minute
+
+var githubLiteralName = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 
 // AppConfig contains the GitHub App material needed to mint installation tokens.
 type AppConfig struct {
@@ -85,6 +89,10 @@ func NewClient(httpClient HTTPDoer, baseURL string, clock Clock) (*Client, error
 		return nil, fmt.Errorf("GitHub API base URL must be absolute")
 	}
 
+	if parsedBaseURL.Scheme != "https" && !(parsedBaseURL.Scheme == "http" && isLoopbackHost(parsedBaseURL.Hostname())) {
+		return nil, fmt.Errorf("GitHub API base URL must use https unless the host is loopback")
+	}
+
 	if clock == nil {
 		clock = time.Now
 	}
@@ -98,9 +106,10 @@ func NewClient(httpClient HTTPDoer, baseURL string, clock Clock) (*Client, error
 
 // CreateInstallationToken mints an installation token for the given target.
 //
-// CreateInstallationToken signs a short-lived RS256 JWT, POSTs it to
-// /app/installations/{id}/access_tokens, and returns the token and its
-// expiration. Errors never include the App private key material.
+// CreateInstallationToken signs a short-lived RS256 JWT, verifies the target
+// repository's installation, POSTs to /app/installations/{id}/access_tokens,
+// and returns the token and its expiration. Errors never include the App
+// private key material or raw upstream response bodies.
 func (c *Client) CreateInstallationToken(ctx context.Context, app AppConfig, target Target) (InstallationToken, error) {
 	if app.ClientID == "" {
 		return InstallationToken{}, fmt.Errorf("GitHub App client ID is required")
@@ -114,8 +123,16 @@ func (c *Client) CreateInstallationToken(ctx context.Context, app AppConfig, tar
 		return InstallationToken{}, fmt.Errorf("GitHub repository owner is required")
 	}
 
+	if !githubLiteralName.MatchString(target.Owner) {
+		return InstallationToken{}, fmt.Errorf("GitHub repository owner contains unsupported characters")
+	}
+
 	if target.Repository == "" {
 		return InstallationToken{}, fmt.Errorf("GitHub repository name is required")
+	}
+
+	if !githubLiteralName.MatchString(target.Repository) {
+		return InstallationToken{}, fmt.Errorf("GitHub repository name contains unsupported characters")
 	}
 
 	jwt, err := c.signJWT(app)
@@ -164,7 +181,7 @@ func (c *Client) CreateInstallationToken(ctx context.Context, app AppConfig, tar
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return InstallationToken{}, fmt.Errorf("GitHub installation-token request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(responseBody)))
+		return InstallationToken{}, fmt.Errorf("GitHub installation-token request failed with status %d", resp.StatusCode)
 	}
 
 	var tokenResponse struct {
@@ -213,7 +230,7 @@ func (c *Client) validateRepositoryInstallation(ctx context.Context, jwt string,
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("GitHub repository-installation request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(responseBody)))
+		return fmt.Errorf("GitHub repository-installation request failed with status %d", resp.StatusCode)
 	}
 
 	var installationResponse struct {
@@ -232,6 +249,19 @@ func (c *Client) validateRepositoryInstallation(ctx context.Context, jwt string,
 	}
 
 	return nil
+}
+
+func isLoopbackHost(host string) bool {
+	if host == "" {
+		return false
+	}
+
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (c *Client) signJWT(app AppConfig) (string, error) {

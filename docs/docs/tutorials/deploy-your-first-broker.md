@@ -142,7 +142,7 @@ The response should be your repository name.
 
 ## What just happened
 
-On each invocation the Lambda reads the three SSM parameters in one batched call (with decryption), signs an RS256 JWT valid for 9 minutes with a 60-second backdated `iat`, exchanges the JWT for an installation token via `POST /app/installations/{id}/access_tokens`, and returns the token to you. It is stateless — nothing is cached across invocations. See [Architecture](../explanation/architecture) for the full diagram.
+On each invocation the Lambda reads the three SSM parameters in one batched call (with decryption), signs an RS256 JWT valid for 9 minutes with a 60-second backdated `iat`, verifies that the configured repository belongs to the configured installation, exchanges the JWT for an installation token via `POST /app/installations/{id}/access_tokens`, and returns the token to you. It is stateless — nothing is cached across invocations. See [Architecture](../explanation/architecture) for the full diagram.
 
 ## Next steps
 

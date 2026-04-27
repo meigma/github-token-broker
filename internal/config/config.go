@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -17,6 +18,11 @@ const (
 	defaultLogLevel                = "info"
 	defaultPermissionName          = "contents"
 	defaultPermissionLevel         = "read"
+)
+
+var (
+	githubLiteralNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
+	ssmParameterPathPattern  = regexp.MustCompile(`^/[A-Za-z0-9_.\-/]+$`)
 )
 
 // Config is the runtime configuration for github-token-broker.
@@ -43,9 +49,10 @@ type Config struct {
 
 // Load reads environment variables into a Config.
 //
-// Load returns an error when required variables are missing, when SSM parameter
-// paths are not absolute, or when the permissions environment variable does not
-// parse into a non-empty JSON object of string-to-string entries.
+// Load returns an error when required variables are missing, when repository
+// names or SSM parameter paths contain unsupported characters, or when the
+// permissions environment variable does not parse into a non-empty JSON object
+// of string-to-string entries.
 func Load() (Config, error) {
 	cfg := Config{
 		AWSRegion:               os.Getenv("AWS_REGION"),
@@ -62,24 +69,32 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("AWS_REGION is required")
 	}
 
-	if !strings.HasPrefix(cfg.ClientIDParameter, "/") {
-		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM must be an absolute SSM parameter path")
+	if !ssmParameterPathPattern.MatchString(cfg.ClientIDParameter) {
+		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM must be an absolute literal SSM parameter path")
 	}
 
-	if !strings.HasPrefix(cfg.InstallationIDParameter, "/") {
-		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM must be an absolute SSM parameter path")
+	if !ssmParameterPathPattern.MatchString(cfg.InstallationIDParameter) {
+		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM must be an absolute literal SSM parameter path")
 	}
 
-	if !strings.HasPrefix(cfg.PrivateKeyParameter, "/") {
-		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM must be an absolute SSM parameter path")
+	if !ssmParameterPathPattern.MatchString(cfg.PrivateKeyParameter) {
+		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM must be an absolute literal SSM parameter path")
 	}
 
 	if cfg.RepositoryOwner == "" {
 		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_REPOSITORY_OWNER is required")
 	}
 
+	if !githubLiteralNamePattern.MatchString(cfg.RepositoryOwner) {
+		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_REPOSITORY_OWNER contains unsupported characters")
+	}
+
 	if cfg.RepositoryName == "" {
 		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_REPOSITORY_NAME is required")
+	}
+
+	if !githubLiteralNamePattern.MatchString(cfg.RepositoryName) {
+		return Config{}, fmt.Errorf("GITHUB_TOKEN_BROKER_REPOSITORY_NAME contains unsupported characters")
 	}
 
 	if cfg.GitHubAPIBaseURL == "" {

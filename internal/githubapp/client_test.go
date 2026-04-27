@@ -143,7 +143,7 @@ func TestCreateInstallationTokenSurfacesGitHubErrorsWithoutPrivateKey(t *testing
 		if req.Method == http.MethodGet {
 			return jsonResponse(http.StatusOK, `{"id":123}`), nil
 		}
-		return jsonResponse(http.StatusForbidden, `{"message":"bad credentials"}`), nil
+		return jsonResponse(http.StatusForbidden, `{"message":"bad credentials","jwt":"`+privateKey+`"}`), nil
 	})
 	client, err := NewClient(httpClient, "https://api.github.test", nil)
 	require.NoError(t, err)
@@ -162,7 +162,56 @@ func TestCreateInstallationTokenSurfacesGitHubErrorsWithoutPrivateKey(t *testing
 
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "status 403")
+	assert.NotContains(t, err.Error(), "bad credentials")
 	assert.NotContains(t, err.Error(), privateKey)
+}
+
+func TestCreateInstallationTokenRejectsUnsafeTarget(t *testing.T) {
+	privateKey := testPrivateKeyPEM(t)
+	httpClient := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		t.Fatalf("HTTP call should not be issued for an unsafe target")
+		return nil, nil
+	})
+	client, err := NewClient(httpClient, "https://api.github.test", nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		target  Target
+		wantErr string
+	}{
+		{
+			name: "owner with slash",
+			target: Target{
+				Owner:      "acme/other",
+				Repository: "widgets",
+			},
+			wantErr: "GitHub repository owner contains unsupported characters",
+		},
+		{
+			name: "repository with percent escape",
+			target: Target{
+				Owner:      "acme",
+				Repository: "widgets%2fother",
+			},
+			wantErr: "GitHub repository name contains unsupported characters",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := client.CreateInstallationToken(context.Background(), AppConfig{
+				ClientID:       "Iv1.client",
+				InstallationID: "123",
+				PrivateKeyPEM:  privateKey,
+			}, tt.target)
+
+			require.Error(t, err)
+			assert.ErrorContains(t, err, tt.wantErr)
+			assert.NotContains(t, err.Error(), privateKey)
+		})
+	}
 }
 
 func TestCreateInstallationTokenRejectsInvalidPrivateKey(t *testing.T) {
@@ -192,6 +241,36 @@ func TestNewClientRejectsRelativeBaseURL(t *testing.T) {
 
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "absolute")
+}
+
+func TestNewClientValidatesBaseURLScheme(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		wantErr bool
+	}{
+		{name: "github https", baseURL: "https://api.github.com"},
+		{name: "ghes https", baseURL: "https://ghe.example.com/api/v3"},
+		{name: "localhost http", baseURL: "http://localhost:8080"},
+		{name: "ipv4 loopback http", baseURL: "http://127.0.0.1:8080"},
+		{name: "ipv6 loopback http", baseURL: "http://[::1]:8080"},
+		{name: "non-loopback http", baseURL: "http://api.github.test", wantErr: true},
+		{name: "unsupported scheme", baseURL: "ftp://api.github.test", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewClient(nil, tt.baseURL, nil)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, "must use https")
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 func assertJWTClaims(t *testing.T, token string, expected map[string]any) {

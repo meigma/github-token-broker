@@ -73,7 +73,42 @@ func TestLoadAcceptsArbitraryOwnerRepo(t *testing.T) {
 	assert.Equal(t, "infra", cfg.RepositoryName)
 }
 
-func TestLoadRejectsRelativeParameterPath(t *testing.T) {
+func TestLoadRejectsUnsafeOwnerRepo(t *testing.T) {
+	tests := []struct {
+		name    string
+		envKey  string
+		envVar  string
+		wantMsg string
+	}{
+		{
+			name:    "owner path escape",
+			envKey:  "GITHUB_TOKEN_BROKER_REPOSITORY_OWNER",
+			envVar:  "acme/widgets",
+			wantMsg: "GITHUB_TOKEN_BROKER_REPOSITORY_OWNER contains unsupported characters",
+		},
+		{
+			name:    "repository percent escape",
+			envKey:  "GITHUB_TOKEN_BROKER_REPOSITORY_NAME",
+			envVar:  "widgets%2fadmin",
+			wantMsg: "GITHUB_TOKEN_BROKER_REPOSITORY_NAME contains unsupported characters",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv(tt.envKey, tt.envVar)
+
+			_, err := Load()
+
+			require.Error(t, err)
+			assert.ErrorContains(t, err, tt.wantMsg)
+		})
+	}
+}
+
+func TestLoadRejectsInvalidParameterPath(t *testing.T) {
 	tests := []struct {
 		name    string
 		envVar  string
@@ -84,19 +119,19 @@ func TestLoadRejectsRelativeParameterPath(t *testing.T) {
 			name:    "client id",
 			envVar:  "github-token-broker/app/client-id",
 			envKey:  "GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM",
-			wantMsg: "GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM must be an absolute SSM parameter path",
+			wantMsg: "GITHUB_TOKEN_BROKER_CLIENT_ID_PARAM must be an absolute literal SSM parameter path",
 		},
 		{
 			name:    "installation id",
-			envVar:  "github-token-broker/app/installation-id",
+			envVar:  "/github-token-broker/app/*",
 			envKey:  "GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM",
-			wantMsg: "GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM must be an absolute SSM parameter path",
+			wantMsg: "GITHUB_TOKEN_BROKER_INSTALLATION_ID_PARAM must be an absolute literal SSM parameter path",
 		},
 		{
 			name:    "private key",
-			envVar:  "github-token-broker/app/private-key-pem",
+			envVar:  "/github-token-broker/app/private key",
 			envKey:  "GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM",
-			wantMsg: "GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM must be an absolute SSM parameter path",
+			wantMsg: "GITHUB_TOKEN_BROKER_PRIVATE_KEY_PARAM must be an absolute literal SSM parameter path",
 		},
 	}
 

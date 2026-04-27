@@ -185,7 +185,7 @@ func TestBrokerReportsGitHubTokenRejection(t *testing.T) {
 
 	body := result.requireError(t)
 	assert.Contains(t, body, "status 403")
-	assert.Contains(t, body, "denied")
+	assert.NotContains(t, body, "denied")
 	assertNoLogLeak(t, result, key.privatePEM, github.lastJWT())
 	github.assertRequests(t, 2)
 }

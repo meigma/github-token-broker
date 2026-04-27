@@ -14,7 +14,7 @@ The broker's purpose is to narrow the surface over which a GitHub App's long-liv
 
 - **Token theft from caller environments.** Callers only ever see short-lived installation tokens, not the PEM. Stealing a token buys the attacker roughly one hour on one repository with one permission set — and the window closes on its own.
 - **Scope escalation via caller input.** The scope of a minted token — repository, permissions — is fixed at deploy time. A caller cannot request a wider scope. See [Why empty payloads are enforced](./why-empty-payloads).
-- **Credential exfiltration via logs.** The broker never logs the minted token. CloudWatch Logs for the function contain only the repositories and expiration time. The PEM is never logged under any code path.
+- **Credential exfiltration via logs.** The broker never logs the minted token. Success logs contain only the repositories and expiration time, and GitHub error response bodies are not copied into failure logs. The PEM is never logged under any code path.
 - **Casual access to the PEM at rest.** The PEM is stored as an SSM `SecureString`, encrypted with either the AWS-managed SSM key or a customer-managed KMS key. Reading the parameter value requires `ssm:GetParameters` with `WithDecryption`.
 
 ### Not defended against
@@ -49,6 +49,7 @@ Both are under the AWS account's control. An attacker with the ability to modify
 - The PEM is never emitted to logs, traces, or response bodies.
 - The token is never emitted to logs, traces, or any place other than the invocation response.
 - IAM access to the three SSM parameters is tightly scoped — no wildcards, no `GetParameter` (singular), no write actions. See [IAM permissions](../reference/iam-permissions).
+- Terraform and runtime configuration reject wildcard SSM paths; Terraform rejects wildcard KMS ARNs; the GitHub client rejects non-HTTPS API URLs except loopback `http` for local tests.
 
 ## See also
 

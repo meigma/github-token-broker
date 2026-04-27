@@ -25,7 +25,7 @@ The Terraform module provisions the Lambda's execution role with a least-privile
 }
 ```
 
-The actual parameter paths come from the module's `ssm_parameter_paths` input and default to the paths shown above. Only `ssm:GetParameters` (plural) is granted — the broker fetches all three in one batched call.
+The actual parameter paths come from the module's `ssm_parameter_paths` input and default to the paths shown above. The module accepts only absolute literal SSM paths and rejects wildcard characters so the generated ARN resources stay exact. Only `ssm:GetParameters` (plural) is granted — the broker fetches all three in one batched call.
 
 ### Decrypt the private key (conditional)
 
@@ -40,7 +40,7 @@ Present only when the module's `kms_key_arn` variable is set:
 }
 ```
 
-When the SecureString parameter uses the AWS-managed SSM key (`alias/aws/ssm`), this statement is omitted; the AWS-managed key grants decrypt via SSM's service principal automatically.
+When the SecureString parameter uses the AWS-managed SSM key (`alias/aws/ssm`), this statement is omitted; the AWS-managed key grants decrypt via SSM's service principal automatically. When `kms_key_arn` is set, the module requires a literal KMS key or alias ARN and rejects wildcard characters.
 
 ### Write CloudWatch logs
 

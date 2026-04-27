@@ -9,14 +9,15 @@ resource "null_resource" "fetch_release" {
 
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
-    command     = <<-EOT
+    environment = {
+      RELEASE_VERSION    = coalesce(var.lambda_artifact.release_version, "")
+      RELEASE_REPOSITORY = var.release_repository
+      RELEASE_CACHE_DIR  = coalesce(local.release_cache_dir, "")
+    }
+    command = <<-EOT
       set -euo pipefail
 
-      version='${var.lambda_artifact.release_version}'
-      repo='${var.release_repository}'
-      dir='${local.release_cache_dir}'
-
-      mkdir -p "$dir"
+      mkdir -p "$RELEASE_CACHE_DIR"
 
       if ! command -v gh >/dev/null 2>&1; then
         echo "error: gh CLI is required to fetch the release asset. Install it or pre-download and pass lambda_zip_path." >&2
@@ -28,14 +29,14 @@ resource "null_resource" "fetch_release" {
         exit 1
       fi
 
-      gh release download "$version" \
-        --repo "$repo" \
+      gh release download "$RELEASE_VERSION" \
+        --repo "$RELEASE_REPOSITORY" \
         --pattern github-token-broker.zip \
         --pattern checksums.txt \
-        --dir "$dir" \
+        --dir "$RELEASE_CACHE_DIR" \
         --clobber
 
-      (cd "$dir" && sha256sum --check --status checksums.txt)
+      (cd "$RELEASE_CACHE_DIR" && sha256sum --check --status checksums.txt)
     EOT
   }
 }
@@ -72,11 +73,4 @@ resource "aws_lambda_function" "broker" {
     aws_cloudwatch_log_group.lambda,
     aws_iam_role_policy.lambda,
   ]
-}
-
-resource "aws_lambda_function_url" "broker" {
-  count = var.enable_function_url ? 1 : 0
-
-  function_name      = aws_lambda_function.broker.function_name
-  authorization_type = "AWS_IAM"
 }
