@@ -6,7 +6,7 @@ description: Point the broker at a GitHub Enterprise Server instance instead of 
 
 # Use with GitHub Enterprise Server
 
-The broker targets `https://api.github.com` by default. Overriding the API base URL points it at GitHub Enterprise Server (GHES).
+The broker targets `https://api.github.com` by default. Overriding the API base URL points it at GitHub Enterprise Server (GHES). The GHES API URL must use `https`; plain `http` is rejected except for loopback URLs used by local tests.
 
 ## Before you start
 

@@ -14,7 +14,7 @@ The broker reads three SSM parameters in a single `GetParameters` call with `Wit
 | `/github-token-broker/app/installation-id` | `String` | The numeric installation ID as a string (e.g. `"12345678"`). Visible in the GitHub App's installation URL. |
 | `/github-token-broker/app/private-key-pem` | `SecureString` | A PEM-encoded RSA private key, starting with `-----BEGIN RSA PRIVATE KEY-----`. The entire file contents, including the `BEGIN`/`END` lines and trailing newline. |
 
-All three paths are overridable via environment variables — see [Environment variables](./environment-variables).
+All three paths are overridable via environment variables — see [Environment variables](./environment-variables). Custom paths must be absolute literal SSM parameter names using only letters, numbers, periods, underscores, hyphens, and slashes; wildcard characters are rejected because these paths are also rendered into IAM resource ARNs.
 
 ## Client ID, not App ID
 

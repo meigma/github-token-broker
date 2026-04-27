@@ -3,8 +3,8 @@ variable "function_name" {
   type        = string
 
   validation {
-    condition     = length(var.function_name) > 0 && length(var.function_name) <= 64
-    error_message = "function_name must be between 1 and 64 characters."
+    condition     = can(regex("^[A-Za-z0-9_-]{1,64}$", var.function_name))
+    error_message = "function_name must be 1-64 characters and contain only letters, numbers, hyphens, and underscores."
   }
 }
 
@@ -13,8 +13,8 @@ variable "repository_owner" {
   type        = string
 
   validation {
-    condition     = length(trimspace(var.repository_owner)) > 0
-    error_message = "repository_owner must be non-empty."
+    condition     = can(regex("^[A-Za-z0-9_.-]+$", var.repository_owner))
+    error_message = "repository_owner must contain only letters, numbers, periods, underscores, and hyphens."
   }
 }
 
@@ -23,8 +23,8 @@ variable "repository_name" {
   type        = string
 
   validation {
-    condition     = length(trimspace(var.repository_name)) > 0
-    error_message = "repository_name must be non-empty."
+    condition     = can(regex("^[A-Za-z0-9_.-]+$", var.repository_name))
+    error_message = "repository_name must contain only letters, numbers, periods, underscores, and hyphens."
   }
 }
 
@@ -82,9 +82,14 @@ variable "lambda_artifact" {
 }
 
 variable "release_repository" {
-  description = "GitHub repository to pull the release asset from when lambda_artifact.release_version is set. Defaults to the upstream repo."
+  description = "Literal OWNER/REPO GitHub repository to pull the release asset from when lambda_artifact.release_version is set. Defaults to the upstream repo."
   type        = string
   default     = "meigma/github-token-broker"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.release_repository))
+    error_message = "release_repository must be a literal OWNER/REPO value containing only letters, numbers, periods, underscores, and hyphens."
+  }
 }
 
 variable "permissions" {
@@ -106,7 +111,7 @@ variable "permissions" {
 }
 
 variable "ssm_parameter_paths" {
-  description = "SSM parameter paths holding the GitHub App credentials. All paths must be absolute."
+  description = "SSM parameter paths holding the GitHub App credentials. All paths must be absolute literal SSM paths."
   type = object({
     client_id       = string
     installation_id = string
@@ -120,16 +125,16 @@ variable "ssm_parameter_paths" {
 
   validation {
     condition = alltrue([
-      startswith(var.ssm_parameter_paths.client_id, "/"),
-      startswith(var.ssm_parameter_paths.installation_id, "/"),
-      startswith(var.ssm_parameter_paths.private_key, "/"),
+      can(regex("^/[A-Za-z0-9_.\\-/]+$", var.ssm_parameter_paths.client_id)),
+      can(regex("^/[A-Za-z0-9_.\\-/]+$", var.ssm_parameter_paths.installation_id)),
+      can(regex("^/[A-Za-z0-9_.\\-/]+$", var.ssm_parameter_paths.private_key)),
     ])
-    error_message = "ssm_parameter_paths entries must be absolute (start with /)."
+    error_message = "ssm_parameter_paths entries must be absolute literal SSM paths containing only letters, numbers, periods, underscores, hyphens, and slashes."
   }
 }
 
 variable "github_api_base_url" {
-  description = "GitHub API base URL. Override for GitHub Enterprise Server."
+  description = "GitHub API base URL. Override for GitHub Enterprise Server. The Lambda requires https except for loopback http URLs used in local tests."
   type        = string
   default     = "https://api.github.com"
 }
@@ -198,14 +203,16 @@ variable "tags" {
   default     = {}
 }
 
-variable "enable_function_url" {
-  description = "Create a Lambda Function URL with AWS_IAM auth. Never creates a NONE-auth URL."
-  type        = bool
-  default     = false
-}
-
 variable "kms_key_arn" {
-  description = "KMS key ARN used by SSM to encrypt the private key parameter. Set only when the customer uses a CMK instead of the AWS-managed key. Null disables kms:Decrypt in the role policy."
+  description = "Literal KMS key or alias ARN used by SSM to encrypt the private key parameter. Set only when the customer uses a CMK instead of the AWS-managed key. Null disables kms:Decrypt in the role policy."
   type        = string
   default     = null
+
+  validation {
+    condition = (
+      var.kms_key_arn == null ||
+      can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:(key/[A-Za-z0-9-]+|alias/[A-Za-z0-9/_-]+)$", var.kms_key_arn))
+    )
+    error_message = "kms_key_arn must be a literal KMS key or alias ARN without wildcard characters."
+  }
 }

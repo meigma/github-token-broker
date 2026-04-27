@@ -2,7 +2,7 @@
 
 Deploys [`github-token-broker`](https://github.com/meigma/github-token-broker) as an AWS Lambda, sourced from a published GitHub Release asset.
 
-The module is opinionated in what matters for supply-chain integrity (SHA256 verification on download, least-privilege IAM, `AWS_IAM`-only Function URL) and configurable everywhere else (memory, timeout, tags, log retention, permissions set, SSM parameter paths, KMS).
+The module is opinionated in what matters for supply-chain integrity (SHA256 verification on download, least-privilege IAM, direct Lambda invocation only) and configurable everywhere else (memory, timeout, tags, log retention, permissions set, SSM parameter paths, KMS).
 
 ## Usage
 
@@ -30,7 +30,7 @@ Three ways to source the Lambda zip via `lambda_artifact`:
 
 Exactly one of the three must be set; a validation rule enforces this.
 
-See [`examples/basic`](./examples/basic) for the smallest viable config, [`examples/function-url`](./examples/function-url) for a Function URL deployment, and [`examples/with-ssm-bootstrap`](./examples/with-ssm-bootstrap) for first-time SSM parameter creation.
+See [`examples/basic`](./examples/basic) for the smallest viable config and [`examples/with-ssm-bootstrap`](./examples/with-ssm-bootstrap) for first-time SSM parameter creation.
 
 ## Verification
 
@@ -83,7 +83,7 @@ End-to-end validation requires an AWS account and a GitHub App with an installat
 ## Security notes
 
 - IAM policy grants only `ssm:GetParameters` on the three configured paths, `kms:Decrypt` on the explicit CMK ARN when provided, and `logs:CreateLogStream`/`logs:PutLogEvents` on the module-managed log group. No wildcards on sensitive actions.
-- Function URLs are always `AWS_IAM`-authenticated. The module will not create a `NONE`-auth URL.
+- The module exposes direct Lambda invocation only. Put API Gateway, Function URLs, or another HTTP adapter in front of the broker only if that adapter validates method, path, query string, and body before invoking the Lambda.
 - The Lambda rejects non-empty invocation payloads, so the deployed `permissions` set is the upper bound — callers cannot request more.
 - `AWS_REGION` is provided by the Lambda runtime automatically; the module does not set it explicitly.
 - `CHANGELOG.md` and the release page are the source of truth for what's in a given `release_version`. The module performs SHA256 verification against `checksums.txt`, not signature verification — use `gh attestation verify` for supply-chain assurance.
@@ -123,7 +123,6 @@ No modules.
 | [aws_iam_role.lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy.lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_lambda_function.broker](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
-| [aws_lambda_function_url.broker](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function_url) | resource |
 | [null_resource.fetch_release](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -136,19 +135,18 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_architecture"></a> [architecture](#input\_architecture) | Lambda architecture. arm64 matches the published release zip. | `string` | `"arm64"` | no |
-| <a name="input_enable_function_url"></a> [enable\_function\_url](#input\_enable\_function\_url) | Create a Lambda Function URL with AWS\_IAM auth. Never creates a NONE-auth URL. | `bool` | `false` | no |
 | <a name="input_function_name"></a> [function\_name](#input\_function\_name) | Name of the Lambda function. | `string` | n/a | yes |
-| <a name="input_github_api_base_url"></a> [github\_api\_base\_url](#input\_github\_api\_base\_url) | GitHub API base URL. Override for GitHub Enterprise Server. | `string` | `"https://api.github.com"` | no |
-| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | KMS key ARN used by SSM to encrypt the private key parameter. Set only when the customer uses a CMK instead of the AWS-managed key. Null disables kms:Decrypt in the role policy. | `string` | `null` | no |
+| <a name="input_github_api_base_url"></a> [github\_api\_base\_url](#input\_github\_api\_base\_url) | GitHub API base URL. Override for GitHub Enterprise Server. The Lambda requires https except for loopback http URLs used in local tests. | `string` | `"https://api.github.com"` | no |
+| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | Literal KMS key or alias ARN used by SSM to encrypt the private key parameter. Set only when the customer uses a CMK instead of the AWS-managed key. Null disables kms:Decrypt in the role policy. | `string` | `null` | no |
 | <a name="input_lambda_artifact"></a> [lambda\_artifact](#input\_lambda\_artifact) | Source of the Lambda zip. Exactly one of the three fields must be set:<br/><br/>- `release_version`: a tag published on `release_repository` (e.g. "v1.0.0").<br/>  The module downloads `github-token-broker.zip` and `checksums.txt` via the<br/>  `gh` CLI on the machine running `terraform apply`, verifies the zip's<br/>  SHA256 against `checksums.txt`, and points the Lambda at the cached copy.<br/>- `lambda_zip_path`: absolute path to a pre-downloaded zip. Used for<br/>  air-gapped workflows where `gh` is unavailable at apply time.<br/>- `lambda_source_s3`: S3 bucket/key holding the zip. Used when the zip is<br/>  staged to S3 out-of-band (e.g. by CI).<br/><br/>Inline SHA256 verification is defense-in-depth against a corrupted<br/>download. It is NOT a replacement for `gh attestation verify`, which is<br/>the canonical supply-chain check. See `terraform/README.md` for guidance. | <pre>object({<br/>    release_version = optional(string)<br/>    lambda_zip_path = optional(string)<br/>    lambda_source_s3 = optional(object({<br/>      bucket = string<br/>      key    = string<br/>    }))<br/>  })</pre> | n/a | yes |
 | <a name="input_log_level"></a> [log\_level](#input\_log\_level) | Slog level. One of debug, info, warn, error. | `string` | `"info"` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | CloudWatch Logs retention in days. | `number` | `30` | no |
 | <a name="input_memory_size"></a> [memory\_size](#input\_memory\_size) | Lambda memory in MB. | `number` | `128` | no |
 | <a name="input_permissions"></a> [permissions](#input\_permissions) | Repository permissions requested on each minted token. Serialized to GITHUB\_TOKEN\_BROKER\_PERMISSIONS as JSON. | `map(string)` | <pre>{<br/>  "contents": "read"<br/>}</pre> | no |
-| <a name="input_release_repository"></a> [release\_repository](#input\_release\_repository) | GitHub repository to pull the release asset from when lambda\_artifact.release\_version is set. Defaults to the upstream repo. | `string` | `"meigma/github-token-broker"` | no |
+| <a name="input_release_repository"></a> [release\_repository](#input\_release\_repository) | Literal OWNER/REPO GitHub repository to pull the release asset from when lambda\_artifact.release\_version is set. Defaults to the upstream repo. | `string` | `"meigma/github-token-broker"` | no |
 | <a name="input_repository_name"></a> [repository\_name](#input\_repository\_name) | GitHub repository the broker issues tokens for. | `string` | n/a | yes |
 | <a name="input_repository_owner"></a> [repository\_owner](#input\_repository\_owner) | GitHub owner of the repository the broker issues tokens for. | `string` | n/a | yes |
-| <a name="input_ssm_parameter_paths"></a> [ssm\_parameter\_paths](#input\_ssm\_parameter\_paths) | SSM parameter paths holding the GitHub App credentials. All paths must be absolute. | <pre>object({<br/>    client_id       = string<br/>    installation_id = string<br/>    private_key     = string<br/>  })</pre> | <pre>{<br/>  "client_id": "/github-token-broker/app/client-id",<br/>  "installation_id": "/github-token-broker/app/installation-id",<br/>  "private_key": "/github-token-broker/app/private-key-pem"<br/>}</pre> | no |
+| <a name="input_ssm_parameter_paths"></a> [ssm\_parameter\_paths](#input\_ssm\_parameter\_paths) | SSM parameter paths holding the GitHub App credentials. All paths must be absolute literal SSM paths. | <pre>object({<br/>    client_id       = string<br/>    installation_id = string<br/>    private_key     = string<br/>  })</pre> | <pre>{<br/>  "client_id": "/github-token-broker/app/client-id",<br/>  "installation_id": "/github-token-broker/app/installation-id",<br/>  "private_key": "/github-token-broker/app/private-key-pem"<br/>}</pre> | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Tags applied to all resources created by this module. | `map(string)` | `{}` | no |
 | <a name="input_timeout"></a> [timeout](#input\_timeout) | Lambda execution timeout in seconds. | `number` | `10` | no |
 
@@ -160,7 +158,6 @@ No modules.
 | <a name="output_function_arn"></a> [function\_arn](#output\_function\_arn) | ARN of the Lambda function. |
 | <a name="output_function_invoke_arn"></a> [function\_invoke\_arn](#output\_function\_invoke\_arn) | Invoke ARN, suitable for API Gateway or EventBridge integrations. |
 | <a name="output_function_name"></a> [function\_name](#output\_function\_name) | Name of the Lambda function. |
-| <a name="output_function_url"></a> [function\_url](#output\_function\_url) | Function URL when enable\_function\_url is true; null otherwise. |
 | <a name="output_log_group_name"></a> [log\_group\_name](#output\_log\_group\_name) | Name of the CloudWatch Log Group backing Lambda logs. |
 | <a name="output_role_arn"></a> [role\_arn](#output\_role\_arn) | ARN of the Lambda execution role. |
 | <a name="output_role_name"></a> [role\_name](#output\_role\_name) | Name of the Lambda execution role. |

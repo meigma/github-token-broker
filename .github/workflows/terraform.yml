@@ -52,7 +52,6 @@ jobs:
         directory:
           - terraform
           - terraform/examples/basic
-          - terraform/examples/function-url
           - terraform/examples/with-ssm-bootstrap
     steps:
       - name: Checkout
@@ -72,6 +71,41 @@ jobs:
       - name: terraform validate
         working-directory: ${{ matrix.directory }}
         run: terraform validate -no-color
+
+      - name: terraform test
+        if: matrix.directory == 'terraform'
+        working-directory: terraform
+        run: terraform test -no-color
+
+      - name: removed Function URL input is rejected
+        if: matrix.directory == 'terraform'
+        shell: bash
+        run: |
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+
+          cat > "$tmpdir/main.tf" <<EOF
+          module "broker" {
+            source = "${GITHUB_WORKSPACE}/terraform"
+
+            function_name       = "github-token-broker"
+            repository_owner    = "acme"
+            repository_name     = "widgets"
+            enable_function_url = true
+
+            lambda_artifact = {
+              lambda_zip_path = "/tmp/github-token-broker.zip"
+            }
+          }
+          EOF
+
+          terraform -chdir="$tmpdir" init -backend=false -input=false
+          if terraform -chdir="$tmpdir" validate -no-color >"$tmpdir/validate.out" 2>&1; then
+            echo "expected enable_function_url to be rejected" >&2
+            exit 1
+          fi
+
+          grep -q "Unsupported argument" "$tmpdir/validate.out"
 
   lint:
     runs-on: ubuntu-latest

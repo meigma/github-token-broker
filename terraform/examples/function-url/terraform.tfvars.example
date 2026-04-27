@@ -1,5 +1,0 @@
-region                = "us-east-1"
-repository_owner      = "example-org"
-repository_name       = "example-repo"
-release_version       = "v1.0.0"
-invoker_principal_arn = "arn:aws:iam::123456789012:role/invoker"

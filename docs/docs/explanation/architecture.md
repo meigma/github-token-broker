@@ -23,7 +23,7 @@ flowchart LR
   end
   GitHub["GitHub API<br/>(github.com or GHES)"]
   Caller -->|InvokeFunction<br/>empty payload| Lambda
-  Lambda -->|POST /app/installations/<br/>&#123;id&#125;/access_tokens| GitHub
+  Lambda -->|GET /repos/owner/repo/installation<br/>POST /app/installations/.../access_tokens| GitHub
   Lambda -->|token JSON| Caller
 ```
 
@@ -45,9 +45,11 @@ sequenceDiagram
   L->>S: GetParameters (3 names, WithDecryption)
   S-->>L: client_id, installation_id, private_key_pem
   L->>L: Sign RS256 JWT<br/>(iss=client_id, iat=now-60s, exp=now+9min)
+  L->>G: GET /repos/{owner}/{repo}/installation
+  G-->>L: installation metadata
+  L->>L: Confirm installation id matches config
   L->>G: POST /app/installations/{id}/access_tokens<br/>+ permissions, repositories
   G-->>L: { token, expires_at, ... }
-  L->>L: Validate returned repositories match config
   L-->>C: { token, expires_at, repositories, permissions }
 ```
 
@@ -59,7 +61,7 @@ The broker is stateless. There is no database, no cache, no disk writes. Every f
 
 ## Cold start shape
 
-On a cold start, Go bootstraps (fast — the binary is ~7 MB statically linked) and the first invocation runs the full mint flow. There is no warmup or prefetch. Steady-state invocation latency is dominated by three network round trips: SSM `GetParameters`, GitHub `POST /access_tokens`, and the invocation return. Each is typically sub-100 ms in the same AWS region.
+On a cold start, Go bootstraps (fast — the binary is ~7 MB statically linked) and the first invocation runs the full mint flow. There is no warmup or prefetch. Steady-state invocation latency is dominated by SSM `GetParameters`, GitHub repository-installation preflight, GitHub `POST /access_tokens`, and the invocation return. Each is typically sub-100 ms in the same AWS region.
 
 ## Boundaries
 
