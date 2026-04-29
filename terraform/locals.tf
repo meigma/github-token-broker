@@ -7,7 +7,7 @@ data "aws_partition" "current" {}
 locals {
   account_id = data.aws_caller_identity.current.account_id
   partition  = data.aws_partition.current.partition
-  region     = data.aws_region.current.region
+  region     = data.aws_region.current.name
 
   ssm_parameter_arns = [
     for path in [
