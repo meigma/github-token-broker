@@ -99,8 +99,8 @@ jobs:
           }
           EOF
 
-          terraform -chdir="$tmpdir" init -backend=false -input=false
-          if terraform -chdir="$tmpdir" validate -no-color >"$tmpdir/validate.out" 2>&1; then
+          if terraform -chdir="$tmpdir" init -backend=false -input=false >"$tmpdir/validate.out" 2>&1 &&
+            terraform -chdir="$tmpdir" validate -no-color >>"$tmpdir/validate.out" 2>&1; then
             echo "expected enable_function_url to be rejected" >&2
             exit 1
           fi
