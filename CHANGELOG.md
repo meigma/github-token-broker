@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/meigma/github-token-broker/compare/v2.0.0...v2.1.0) (2026-07-19)
+
+
+### Features
+
+* **session:** align protocol with ai source ([#72](https://github.com/meigma/github-token-broker/issues/72)) ([712a593](https://github.com/meigma/github-token-broker/commit/712a59318e4ec3df2a5110ffc20f6238b2fbc8ac))
+
 ## [2.0.0](https://github.com/meigma/github-token-broker/compare/v1.1.0...v2.0.0) (2026-04-30)
 
 
